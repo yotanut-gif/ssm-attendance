@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import plotly.express as px
 
-from modules.reports import count_summary, explode_periods
+from reports import count_summary, explode_periods
 
 
 def _empty_figure(title: str):
