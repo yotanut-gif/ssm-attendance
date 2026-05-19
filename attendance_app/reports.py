@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from modules.attendance import CLASSROOMS_BY_LEVEL
+from attendance import CLASSROOMS_BY_LEVEL
 
 
 def filter_attendance(
