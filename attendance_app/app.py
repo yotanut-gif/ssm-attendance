@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import sys
 from datetime import date
+from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+
+sys.path.insert(0, str(Path(__file__).parent))
 
 from modules import attendance, auth, reports, sheets, visualization
 
