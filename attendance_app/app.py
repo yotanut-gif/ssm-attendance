@@ -9,7 +9,11 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from modules import attendance, auth, reports, sheets, visualization
+import attendance
+import auth
+import reports
+import sheets
+import visualization
 
 
 st.set_page_config(
