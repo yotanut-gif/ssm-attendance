@@ -256,6 +256,24 @@ def bar_rows(summary: pd.DataFrame, label_column: str, value_column: str) -> str
     return "\n".join(rows)
 
 
+def compact_room_cards(summary: pd.DataFrame) -> str:
+    if summary.empty:
+        return "<p>ไม่มีข้อมูล</p>"
+    cards = []
+    for _, row in summary.iterrows():
+        room = html.escape(str(row["classroom"]))
+        value = int(row["จำนวนรายการ"])
+        cards.append(
+            f"""
+            <div class="room-card">
+              <div class="room-name">{room}</div>
+              <div class="room-count">{value}</div>
+            </div>
+            """
+        )
+    return f'<div class="room-grid">{"".join(cards)}</div>'
+
+
 def table_html(df: pd.DataFrame) -> str:
     if df.empty:
         return "<p>ไม่มีข้อมูลรายการ</p>"
@@ -309,7 +327,7 @@ def printable_report_html(
           <h1>รายงานระดับชั้น {html.escape(level)}</h1>
           <p class="meta">ช่วงวันที่: {html.escape(date_label)}</p>
           <h2>จำนวนรายการตามห้องเรียน</h2>
-          {bar_rows(room_summary, "classroom", "จำนวนรายการ")}
+          {compact_room_cards(room_summary)}
           <h2>ห้องที่ส่งแล้ว / ยังไม่ส่ง</h2>
           <p><strong>ห้องที่ส่งแล้ว:</strong> {html.escape(", ".join(level_sent) if level_sent else "ไม่มี")}</p>
           <p><strong>ห้องที่ยังไม่ส่ง:</strong> {html.escape(", ".join(level_missing) if level_missing else "ไม่มี")}</p>
@@ -326,6 +344,9 @@ def printable_report_html(
     h1 {{ font-size:26px;margin:0 0 4px; }} h2 {{ font-size:18px;margin:24px 0 12px; }} .meta {{ color:#4b5563;margin:0 0 16px; }}
     .bar-row {{ display:grid;grid-template-columns:90px 1fr 48px;gap:10px;align-items:center;margin:10px 0; }}
     .bar-label {{ font-weight:700; }} .bar-track {{ height:22px;background:#e5e7eb;border-radius:999px;overflow:hidden; }} .bar-fill {{ height:100%;background:#2563eb; }} .bar-value {{ text-align:right;font-weight:700; }}
+    .room-grid {{ display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;margin-top:10px; }}
+    .room-card {{ border:1px solid #d1d5db;border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;background:#f9fafb; }}
+    .room-name {{ font-weight:700; }} .room-count {{ font-size:20px;font-weight:800;color:#2563eb; }}
     table {{ border-collapse:collapse;width:100%;margin-top:8px;font-size:13px; }} th,td {{ border:1px solid #d1d5db;padding:6px 8px;text-align:left;vertical-align:top; }} th {{ background:#f3f4f6; }}
     @media print {{ .print-button {{ display:none; }} .page {{ border:0;border-radius:0;page-break-after:always;margin:0;padding:12mm; }} .page:last-child {{ page-break-after:auto; }} }}
     </style></head><body><button class="print-button" onclick="window.print()">พิมพ์รายงาน</button>{"".join(pages)}</body></html>
