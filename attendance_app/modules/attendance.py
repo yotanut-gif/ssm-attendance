@@ -6,7 +6,7 @@ from datetime import date, datetime
 import pandas as pd
 
 
-STATUSES = ["ขาด", "ลาป่วย", "ลากิจ", "มาสาย"]
+STATUSES = ["ขาด", "ลาป่วย", "ลากิจ", "มาสาย", "โดดเรียน"]
 DAY_LABELS = {
     0: "วันจันทร์",
     1: "วันอังคาร",
@@ -90,9 +90,9 @@ def parse_periods(raw_value: str) -> list[int]:
 
     if not periods:
         raise ValueError("กรุณาระบุคาบเรียน")
-    invalid = [period for period in periods if period < 1 or period > 8]
+    invalid = [period for period in periods if period < 1 or period > 10]
     if invalid:
-        raise ValueError("คาบเรียนต้องอยู่ระหว่าง 1 ถึง 8")
+        raise ValueError("คาบเรียนต้องอยู่ระหว่าง 1 ถึง 10")
     return sorted(periods)
 
 

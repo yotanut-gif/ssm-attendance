@@ -98,7 +98,7 @@ def render_attendance_page(students_df: pd.DataFrame, user: dict) -> None:
         with input_col1:
             student_id = st.text_input("เลขประจำตัวนักเรียน 5 หลัก", max_chars=5)
         with input_col2:
-            periods_raw = st.text_input("คาบเรียน", placeholder="เช่น 1-8 หรือ 1,3,4")
+            periods_raw = st.text_input("คาบเรียน", placeholder="เช่น 1-10 หรือ 1,3,4")
         with input_col3:
             status = st.selectbox("สถานะ", attendance.STATUSES)
         with input_col4:
