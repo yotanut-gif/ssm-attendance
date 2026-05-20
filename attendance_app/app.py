@@ -344,7 +344,7 @@ def printable_report_html(
     h1 {{ font-size:26px;margin:0 0 4px; }} h2 {{ font-size:18px;margin:24px 0 12px; }} .meta {{ color:#4b5563;margin:0 0 16px; }}
     .bar-row {{ display:grid;grid-template-columns:90px 1fr 48px;gap:10px;align-items:center;margin:10px 0; }}
     .bar-label {{ font-weight:700; }} .bar-track {{ height:22px;background:#e5e7eb;border-radius:999px;overflow:hidden; }} .bar-fill {{ height:100%;background:#2563eb; }} .bar-value {{ text-align:right;font-weight:700; }}
-    .room-grid {{ display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;margin-top:10px; }}
+    .room-grid {{ display:grid;grid-template-columns:repeat(4, 1fr);gap:10px;margin-top:10px; }}
     .room-card {{ border:1px solid #d1d5db;border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;background:#f9fafb; }}
     .room-name {{ font-weight:700; }} .room-count {{ font-size:20px;font-weight:800;color:#2563eb; }}
     table {{ border-collapse:collapse;width:100%;margin-top:8px;font-size:13px; }} th,td {{ border:1px solid #d1d5db;padding:6px 8px;text-align:left;vertical-align:top; }} th {{ background:#f3f4f6; }}
@@ -370,7 +370,6 @@ def render_reports_dashboard_page(students_df: pd.DataFrame) -> None:
 
     submit_status = reports.submission_status(students_df, submit_df, start_date, end_date, level, classroom)
 
-    st.metric("จำนวนรายการในช่วงที่เลือก", len(filtered))
     chart_col1, chart_col2 = st.columns(2)
     with chart_col1:
         st.plotly_chart(visualization.bar_by_level(filtered, levels), use_container_width=True)
