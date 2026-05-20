@@ -51,7 +51,12 @@ def bar_by_classroom_status(df: pd.DataFrame, classrooms: list[str]):
         text="จำนวนรายการ",
         title="แยกสถานะขาด/ลา/มาสาย ตามห้องเรียน",
     )
-    fig.update_layout(yaxis_title="จำนวนรายการ", xaxis_title="ห้องเรียน", legend_title="สถานะ")
+    fig.update_layout(
+        yaxis_title="จำนวนรายการ",
+        xaxis_title="ห้องเรียน",
+        legend_title="สถานะ",
+        xaxis_tickangle=-45,
+    )
     return fig
 
 

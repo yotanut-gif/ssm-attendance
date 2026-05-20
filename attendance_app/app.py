@@ -202,16 +202,45 @@ def render_report_filters(students_df: pd.DataFrame, attendance_df: pd.DataFrame
     with col_date:
         date_range = st.date_input("ช่วงวันที่รายงาน", value=(date.today(), date.today()))
     with col_level:
-        level_options = levels
-        default_level = 0
-        level = st.selectbox("ระดับชั้น", level_options, index=default_level, key="report_level")
+        level = st.selectbox("ระดับชั้น", [reports.ALL_OPTION] + levels, key="report_level")
     with col_room:
         room_options = [reports.ALL_OPTION]
-        room_options += rooms_by_level.get(level, [])
+        if level != reports.ALL_OPTION:
+            room_options += rooms_by_level.get(level, [])
         classroom = st.selectbox("ห้องเรียน", room_options, key="report_room")
     start_date, end_date = normalize_date_range(date_range)
     filtered = reports.filter_attendance(attendance_df, start_date, end_date, level, classroom)
     return start_date, end_date, level, classroom, filtered
+
+
+def submission_lists(status_df: pd.DataFrame) -> tuple[list[str], list[str]]:
+    if status_df.empty:
+        return [], []
+    compact = status_df.drop_duplicates(["level", "classroom", "สถานะส่ง"])
+    sent_df = compact[compact["สถานะส่ง"] == "ส่งแล้ว"]
+    missing_df = compact[compact["สถานะส่ง"] == "ยังไม่ส่ง"]
+
+    def labels(df: pd.DataFrame) -> list[str]:
+        return [
+            f"{row['level']} {row['classroom']}"
+            for _, row in df[["level", "classroom"]]
+            .drop_duplicates()
+            .sort_values(["level", "classroom"])
+            .iterrows()
+        ]
+
+    return labels(sent_df), labels(missing_df)
+
+
+def render_submission_text(status_df: pd.DataFrame) -> None:
+    sent, missing = submission_lists(status_df)
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("### ห้องที่ส่งแล้ว")
+        st.write(", ".join(sent) if sent else "ไม่มี")
+    with col2:
+        st.markdown("### ห้องที่ยังไม่ส่ง")
+        st.write(", ".join(missing) if missing else "ไม่มี")
 
 
 def bar_rows(summary: pd.DataFrame, label_column: str, value_column: str) -> str:
@@ -252,6 +281,9 @@ def printable_report_html(
     rooms_by_level = attendance.classrooms_by_level(students_df)
     date_label = reports.date_range_label(start_date, end_date)
     pages = []
+    sent, missing = submission_lists(submit_status)
+    sent_text = ", ".join(sent) if sent else "ไม่มี"
+    missing_text = ", ".join(missing) if missing else "ไม่มี"
 
     if selected_level == reports.ALL_OPTION:
         level_summary = reports.summary_by_level(filtered, levels)
@@ -262,7 +294,8 @@ def printable_report_html(
           <h2>จำนวนรายการขาด/ลา/มาสาย ตามระดับชั้น</h2>
           {bar_rows(level_summary, "level", "จำนวนรายการขาด/ลา/มาสาย")}
           <h2>สถานะการส่งข้อมูล</h2>
-          {table_html(submit_status.rename(columns={"สถานะส่ง": "status"}))}
+          <p><strong>ห้องที่ส่งแล้ว:</strong> {html.escape(sent_text)}</p>
+          <p><strong>ห้องที่ยังไม่ส่ง:</strong> {html.escape(missing_text)}</p>
         </section>
         """)
 
@@ -270,6 +303,7 @@ def printable_report_html(
         level_df = filtered[filtered["level"].astype(str) == level]
         room_summary = reports.summary_by_classroom(level_df, rooms_by_level.get(level, []))
         level_submit = submit_status[submit_status["level"].astype(str) == level]
+        level_sent, level_missing = submission_lists(level_submit)
         pages.append(f"""
         <section class="page">
           <h1>รายงานระดับชั้น {html.escape(level)}</h1>
@@ -277,7 +311,8 @@ def printable_report_html(
           <h2>จำนวนรายการตามห้องเรียน</h2>
           {bar_rows(room_summary, "classroom", "จำนวนรายการ")}
           <h2>ห้องที่ส่งแล้ว / ยังไม่ส่ง</h2>
-          {level_submit.to_html(index=False, escape=True)}
+          <p><strong>ห้องที่ส่งแล้ว:</strong> {html.escape(", ".join(level_sent) if level_sent else "ไม่มี")}</p>
+          <p><strong>ห้องที่ยังไม่ส่ง:</strong> {html.escape(", ".join(level_missing) if level_missing else "ไม่มี")}</p>
           <h2>รายการนักเรียน</h2>
           {table_html(level_df)}
         </section>
@@ -323,7 +358,7 @@ def render_reports_dashboard_page(students_df: pd.DataFrame) -> None:
         st.plotly_chart(visualization.bar_by_classroom_status(filtered, chart_rooms), use_container_width=True)
 
     st.subheader("ห้องที่ส่งแล้ว / ยังไม่ส่ง")
-    st.dataframe(submit_status, use_container_width=True, hide_index=True)
+    render_submission_text(submit_status)
     st.subheader("ตารางรายการ")
     st.dataframe(filtered, use_container_width=True, hide_index=True)
 
