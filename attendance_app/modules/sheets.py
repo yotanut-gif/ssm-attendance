@@ -114,15 +114,22 @@ def get_spreadsheet() -> gspread.Spreadsheet:
     return get_client().open_by_key(spreadsheet_id)
 
 
+@st.cache_resource(show_spinner=False)
+def get_worksheet_map() -> dict[str, gspread.Worksheet]:
+    spreadsheet = get_spreadsheet()
+    return {worksheet.title: worksheet for worksheet in spreadsheet.worksheets()}
+
+
 def get_or_create_worksheet(name: str, headers: Iterable[str]) -> gspread.Worksheet:
     spreadsheet = get_spreadsheet()
-    try:
-        worksheet = spreadsheet.worksheet(name)
-    except WorksheetNotFound:
+    worksheet_map = get_worksheet_map()
+    if name not in worksheet_map:
         worksheet = spreadsheet.add_worksheet(title=name, rows=1000, cols=len(list(headers)))
         worksheet.append_row(list(headers))
+        get_worksheet_map.clear()
         return worksheet
 
+    worksheet = worksheet_map[name]
     values = worksheet.get_all_values()
     if not values:
         worksheet.append_row(list(headers))
@@ -132,11 +139,14 @@ def get_or_create_worksheet(name: str, headers: Iterable[str]) -> gspread.Worksh
 def ensure_required_worksheets() -> None:
     if is_demo_mode():
         return
+    worksheet_map = get_worksheet_map()
     for name, headers in WORKSHEET_HEADERS.items():
+        if name in worksheet_map:
+            continue
         get_or_create_worksheet(name, headers)
 
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def load_worksheet_df(name: str) -> pd.DataFrame:
     if is_demo_mode():
         return _demo_df(name).fillna("").astype(str)
@@ -173,7 +183,16 @@ def append_rows(name: str, rows: list[list[str]]) -> None:
 
 def load_students() -> pd.DataFrame:
     df = load_worksheet_df("Students")
-    df["เลขประจำตัว"] = df["เลขประจำตัว"].str.zfill(5)
+    df["เลขประจำตัว"] = (
+        df["เลขประจำตัว"]
+        .astype(str)
+        .str.strip()
+        .str.replace(r"\.0$", "", regex=True)
+        .str.zfill(5)
+    )
+    df["เลขที่"] = df["เลขที่"].astype(str).str.replace(r"\.0$", "", regex=True)
+    df["ห้องเรียน"] = df["ห้องเรียน"].astype(str).str.strip()
+    df["ชื่อ-สกุล"] = df["ชื่อ-สกุล"].astype(str).str.strip()
     return df
 
 

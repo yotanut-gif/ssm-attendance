@@ -1,17 +1,12 @@
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
 
 import pandas as pd
 
 
 STATUSES = ["ขาด", "ลาป่วย", "ลากิจ", "มาสาย"]
-LEVELS = ["ม.1", "ม.2", "ม.3"]
-CLASSROOMS_BY_LEVEL = {
-    "ม.1": ["ม.1/1", "ม.1/2"],
-    "ม.2": ["ม.2/1", "ม.2/2"],
-    "ม.3": ["ม.3/1", "ม.3/2"],
-}
 DAY_LABELS = {
     0: "วันจันทร์",
     1: "วันอังคาร",
@@ -21,6 +16,44 @@ DAY_LABELS = {
     5: "วันเสาร์",
     6: "วันอาทิตย์",
 }
+
+
+def normalize_student_id(value: str) -> str:
+    return str(value).strip().replace(".0", "").zfill(5)
+
+
+def level_from_classroom(classroom: str) -> str:
+    match = re.search(r"ม\.\s*(\d+)", str(classroom))
+    if not match:
+        return str(classroom).split("/")[0].strip()
+    return f"ม.{match.group(1)}"
+
+
+def classroom_sort_key(classroom: str) -> tuple[int, int, str]:
+    match = re.search(r"ม\.\s*(\d+)\s*/\s*(\d+)", str(classroom))
+    if match:
+        return int(match.group(1)), int(match.group(2)), str(classroom)
+    level_match = re.search(r"ม\.\s*(\d+)", str(classroom))
+    if level_match:
+        return int(level_match.group(1)), 0, str(classroom)
+    return 999, 999, str(classroom)
+
+
+def levels_from_students(students_df: pd.DataFrame) -> list[str]:
+    classrooms = students_df["ห้องเรียน"].dropna().astype(str).unique().tolist()
+    levels = sorted({level_from_classroom(room) for room in classrooms}, key=lambda x: int(re.search(r"\d+", x).group()) if re.search(r"\d+", x) else 999)
+    return levels
+
+
+def classrooms_by_level(students_df: pd.DataFrame) -> dict[str, list[str]]:
+    result: dict[str, list[str]] = {}
+    classrooms = sorted(
+        students_df["ห้องเรียน"].dropna().astype(str).str.strip().unique().tolist(),
+        key=classroom_sort_key,
+    )
+    for classroom in classrooms:
+        result.setdefault(level_from_classroom(classroom), []).append(classroom)
+    return result
 
 
 def now_text() -> str:
@@ -75,8 +108,9 @@ def periods_from_text(value: str) -> set[int]:
 
 
 def find_student(student_id: str, students_df: pd.DataFrame) -> dict | None:
-    clean_id = str(student_id).strip().zfill(5)
-    matches = students_df[students_df["เลขประจำตัว"].str.zfill(5) == clean_id]
+    clean_id = normalize_student_id(student_id)
+    normalized_ids = students_df["เลขประจำตัว"].astype(str).map(normalize_student_id)
+    matches = students_df[normalized_ids == clean_id]
     if matches.empty:
         return None
     row = matches.iloc[0].to_dict()

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import plotly.express as px
 
-from modules.reports import count_summary, summary_by_classroom, summary_by_level
+from modules import reports
 
 
 def _empty_figure(title: str):
@@ -12,10 +12,8 @@ def _empty_figure(title: str):
     return fig
 
 
-def bar_by_level(df: pd.DataFrame):
-    summary = summary_by_level(df)
-    if summary.empty:
-        return _empty_figure("จำนวนรายการตามระดับชั้น")
+def bar_by_level(df: pd.DataFrame, levels: list[str]):
+    summary = reports.summary_by_level(df, levels)
     fig = px.bar(
         summary,
         x="level",
@@ -28,21 +26,46 @@ def bar_by_level(df: pd.DataFrame):
     return fig
 
 
-def bar_by_classroom(df: pd.DataFrame, level: str | None = None):
-    if level and level != "ทั้งหมด":
-        summary = summary_by_classroom(df, level)
-    else:
-        summary = count_summary(df, "classroom")
-    if summary.empty:
-        return _empty_figure("จำนวนรายการตามห้องเรียน")
-    y_column = "จำนวนรายการ"
+def bar_by_classroom(df: pd.DataFrame, classrooms: list[str]):
+    summary = reports.summary_by_classroom(df, classrooms)
     fig = px.bar(
         summary,
         x="classroom",
-        y=y_column,
-        text=y_column,
+        y="จำนวนรายการ",
+        text="จำนวนรายการ",
         title="จำนวนรายการขาด/ลา/มาสาย ตามห้องเรียน",
     )
     fig.update_traces(textposition="outside")
     fig.update_layout(yaxis_title="จำนวนรายการ", xaxis_title="ห้องเรียน")
+    return fig
+
+
+def bar_by_classroom_status(df: pd.DataFrame, classrooms: list[str]):
+    summary = reports.summary_by_classroom_status(df, classrooms)
+    fig = px.bar(
+        summary,
+        x="classroom",
+        y="จำนวนรายการ",
+        color="status",
+        barmode="group",
+        text="จำนวนรายการ",
+        title="แยกสถานะขาด/ลา/มาสาย ตามห้องเรียน",
+    )
+    fig.update_layout(yaxis_title="จำนวนรายการ", xaxis_title="ห้องเรียน", legend_title="สถานะ")
+    return fig
+
+
+def submission_bar(status_df: pd.DataFrame):
+    if status_df.empty:
+        return _empty_figure("สถานะการส่งข้อมูล")
+    summary = status_df.groupby("สถานะส่ง").size().reset_index(name="จำนวนห้อง/วัน")
+    fig = px.bar(
+        summary,
+        x="สถานะส่ง",
+        y="จำนวนห้อง/วัน",
+        color="สถานะส่ง",
+        text="จำนวนห้อง/วัน",
+        title="ห้องที่ส่งแล้วและยังไม่ส่ง",
+    )
+    fig.update_traces(textposition="outside")
     return fig
