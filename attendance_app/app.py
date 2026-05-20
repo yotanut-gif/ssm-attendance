@@ -68,15 +68,28 @@ def render_attendance_page(students_df: pd.DataFrame, user: dict) -> None:
     if already_submitted:
         st.info("ห้องนี้มีการส่งข้อมูลของวันที่เลือกแล้ว")
 
-    no_absent = st.button(
+    action_col1, action_col2 = st.columns(2)
+    no_absent = action_col1.button(
         "ไม่มีนักเรียนขาด/ลา/มาสาย",
         type="secondary",
         use_container_width=True,
         disabled=already_submitted,
     )
+    clear_submit = action_col2.button(
+        "ล้างสถานะส่งของห้องนี้",
+        use_container_width=True,
+        disabled=not already_submitted,
+    )
     if no_absent:
         sheets.append_rows("Submit_Log", [attendance.submit_row(selected_date, level, classroom, user)])
         st.success("บันทึกแล้วว่าห้องนี้ไม่มีนักเรียนขาด/ลา/มาสาย")
+        st.rerun()
+    if clear_submit:
+        removed = sheets.delete_rows_by_values(
+            "Submit_Log",
+            {"date": selected_date, "classroom": classroom},
+        )
+        st.success(f"ล้างสถานะส่งแล้ว {removed} รายการ")
         st.rerun()
 
     st.subheader("เพิ่มรายการนักเรียน")
@@ -189,11 +202,12 @@ def render_report_filters(students_df: pd.DataFrame, attendance_df: pd.DataFrame
     with col_date:
         date_range = st.date_input("ช่วงวันที่รายงาน", value=(date.today(), date.today()))
     with col_level:
-        level = st.selectbox("ระดับชั้น", [reports.ALL_OPTION] + levels, key="report_level")
+        level_options = levels
+        default_level = 0
+        level = st.selectbox("ระดับชั้น", level_options, index=default_level, key="report_level")
     with col_room:
         room_options = [reports.ALL_OPTION]
-        if level != reports.ALL_OPTION:
-            room_options += rooms_by_level.get(level, [])
+        room_options += rooms_by_level.get(level, [])
         classroom = st.selectbox("ห้องเรียน", room_options, key="report_room")
     start_date, end_date = normalize_date_range(date_range)
     filtered = reports.filter_attendance(attendance_df, start_date, end_date, level, classroom)

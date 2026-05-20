@@ -181,6 +181,36 @@ def append_rows(name: str, rows: list[list[str]]) -> None:
     clear_data_cache()
 
 
+def delete_rows_by_values(name: str, criteria: dict[str, str]) -> int:
+    headers = WORKSHEET_HEADERS[name]
+    if is_demo_mode():
+        key = f"demo_{name}"
+        existing = st.session_state.get(key, pd.DataFrame(columns=headers)).copy()
+        if existing.empty:
+            return 0
+        mask = pd.Series(True, index=existing.index)
+        for column, value in criteria.items():
+            mask &= existing[column].astype(str) == str(value)
+        removed = int(mask.sum())
+        st.session_state[key] = existing[~mask].reset_index(drop=True)
+        clear_data_cache()
+        return removed
+
+    worksheet = get_or_create_worksheet(name, headers)
+    rows = worksheet.get_all_records()
+    if not rows:
+        return 0
+    df = pd.DataFrame(rows).astype(str)
+    mask = pd.Series(True, index=df.index)
+    for column, value in criteria.items():
+        mask &= df[column].astype(str) == str(value)
+    row_numbers = (df[mask].index + 2).tolist()
+    for row_number in sorted(row_numbers, reverse=True):
+        worksheet.delete_rows(int(row_number))
+    clear_data_cache()
+    return len(row_numbers)
+
+
 def load_students() -> pd.DataFrame:
     df = load_worksheet_df("Students")
     df["เลขประจำตัว"] = (
