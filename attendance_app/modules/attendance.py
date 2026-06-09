@@ -100,9 +100,21 @@ def periods_to_text(periods: list[int]) -> str:
     return ",".join(str(period) for period in sorted(periods))
 
 
+def format_periods(value: str) -> str:
+    raw_value = str(value).strip().replace(" ", "")
+    try:
+        return periods_to_text(parse_periods(raw_value))
+    except ValueError:
+        if raw_value.isdigit() and len(raw_value) > 1:
+            periods = [int(char) for char in raw_value if char != "0"]
+            if periods and all(1 <= period <= 9 for period in periods):
+                return periods_to_text(periods)
+        return str(value)
+
+
 def periods_from_text(value: str) -> set[int]:
     try:
-        return set(parse_periods(value))
+        return set(parse_periods(format_periods(value)))
     except ValueError:
         return set()
 

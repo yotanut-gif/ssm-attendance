@@ -315,10 +315,7 @@ def table_html(df: pd.DataFrame) -> str:
         cells = []
         for column, value in row.items():
             if column == "periods":
-                try:
-                    value = attendance.periods_to_text(attendance.parse_periods(str(value)))
-                except ValueError:
-                    value = str(value)
+                value = attendance.format_periods(str(value))
             cells.append(f"<td>{html.escape(str(value))}</td>")
         body += "<tr>" + "".join(cells) + "</tr>"
     return f"<table><thead><tr>{header}</tr></thead><tbody>{body}</tbody></table>"
