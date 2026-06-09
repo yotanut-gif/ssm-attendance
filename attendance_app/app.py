@@ -232,15 +232,44 @@ def submission_lists(status_df: pd.DataFrame) -> tuple[list[str], list[str]]:
     return labels(sent_df), labels(missing_df)
 
 
+def format_report_date(value: str) -> str:
+    parsed = pd.to_datetime(value, errors="coerce")
+    if pd.isna(parsed):
+        return str(value)
+    buddhist_year = (parsed.year + 543) % 100
+    return f"{parsed.day}/{parsed.month}/{buddhist_year:02d}"
+
+
+def grouped_submission_text(status_df: pd.DataFrame, status: str) -> str:
+    if status_df.empty:
+        return "ไม่มี"
+    filtered = status_df[status_df["สถานะส่ง"] == status].copy()
+    if filtered.empty:
+        return "ไม่มี"
+    lines: list[str] = []
+    for report_date in sorted(filtered["date"].astype(str).unique()):
+        lines.append(f"📅 {format_report_date(report_date)}")
+        day_df = filtered[filtered["date"].astype(str) == report_date]
+        for level in sorted(day_df["level"].astype(str).unique(), key=lambda x: int("".join(filter(str.isdigit, x)) or 999)):
+            rooms = (
+                day_df[day_df["level"].astype(str) == level]["classroom"]
+                .astype(str)
+                .drop_duplicates()
+                .tolist()
+            )
+            rooms = sorted(rooms, key=attendance.classroom_sort_key)
+            lines.append(f"{level}: {', '.join(rooms)}")
+    return "\n".join(lines)
+
+
 def render_submission_text(status_df: pd.DataFrame) -> None:
-    sent, missing = submission_lists(status_df)
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("### ห้องที่ส่งแล้ว")
-        st.write(", ".join(sent) if sent else "ไม่มี")
+        st.text(grouped_submission_text(status_df, "ส่งแล้ว"))
     with col2:
         st.markdown("### ห้องที่ยังไม่ส่ง")
-        st.write(", ".join(missing) if missing else "ไม่มี")
+        st.text(grouped_submission_text(status_df, "ยังไม่ส่ง"))
 
 
 def bar_rows(summary: pd.DataFrame, label_column: str, value_column: str) -> str:
@@ -283,7 +312,15 @@ def table_html(df: pd.DataFrame) -> str:
     header = "".join(f"<th>{labels[column]}</th>" for column in available)
     body = ""
     for _, row in df[available].iterrows():
-        body += "<tr>" + "".join(f"<td>{html.escape(str(value))}</td>" for value in row) + "</tr>"
+        cells = []
+        for column, value in row.items():
+            if column == "periods":
+                try:
+                    value = attendance.periods_to_text(attendance.parse_periods(str(value)))
+                except ValueError:
+                    value = str(value)
+            cells.append(f"<td>{html.escape(str(value))}</td>")
+        body += "<tr>" + "".join(cells) + "</tr>"
     return f"<table><thead><tr>{header}</tr></thead><tbody>{body}</tbody></table>"
 
 
@@ -299,9 +336,8 @@ def printable_report_html(
     rooms_by_level = attendance.classrooms_by_level(students_df)
     date_label = reports.date_range_label(start_date, end_date)
     pages = []
-    sent, missing = submission_lists(submit_status)
-    sent_text = ", ".join(sent) if sent else "ไม่มี"
-    missing_text = ", ".join(missing) if missing else "ไม่มี"
+    sent_text = grouped_submission_text(submit_status, "ส่งแล้ว")
+    missing_text = grouped_submission_text(submit_status, "ยังไม่ส่ง")
 
     if selected_level == reports.ALL_OPTION:
         level_summary = reports.summary_by_level(filtered, levels)
@@ -312,8 +348,8 @@ def printable_report_html(
           <h2>จำนวนรายการขาด/ลา/มาสาย ตามระดับชั้น</h2>
           {bar_rows(level_summary, "level", "จำนวนรายการขาด/ลา/มาสาย")}
           <h2>สถานะการส่งข้อมูล</h2>
-          <p><strong>ห้องที่ส่งแล้ว:</strong> {html.escape(sent_text)}</p>
-          <p><strong>ห้องที่ยังไม่ส่ง:</strong> {html.escape(missing_text)}</p>
+          <h3>ห้องที่ส่งแล้ว</h3><pre>{html.escape(sent_text)}</pre>
+          <h3>ห้องที่ยังไม่ส่ง</h3><pre>{html.escape(missing_text)}</pre>
         </section>
         """)
 
@@ -321,7 +357,8 @@ def printable_report_html(
         level_df = filtered[filtered["level"].astype(str) == level]
         room_summary = reports.summary_by_classroom(level_df, rooms_by_level.get(level, []))
         level_submit = submit_status[submit_status["level"].astype(str) == level]
-        level_sent, level_missing = submission_lists(level_submit)
+        level_sent = grouped_submission_text(level_submit, "ส่งแล้ว")
+        level_missing = grouped_submission_text(level_submit, "ยังไม่ส่ง")
         pages.append(f"""
         <section class="page">
           <h1>รายงานระดับชั้น {html.escape(level)}</h1>
@@ -329,8 +366,8 @@ def printable_report_html(
           <h2>จำนวนรายการตามห้องเรียน</h2>
           {compact_room_cards(room_summary)}
           <h2>ห้องที่ส่งแล้ว / ยังไม่ส่ง</h2>
-          <p><strong>ห้องที่ส่งแล้ว:</strong> {html.escape(", ".join(level_sent) if level_sent else "ไม่มี")}</p>
-          <p><strong>ห้องที่ยังไม่ส่ง:</strong> {html.escape(", ".join(level_missing) if level_missing else "ไม่มี")}</p>
+          <h3>ห้องที่ส่งแล้ว</h3><pre>{html.escape(level_sent)}</pre>
+          <h3>ห้องที่ยังไม่ส่ง</h3><pre>{html.escape(level_missing)}</pre>
           <h2>รายการนักเรียน</h2>
           {table_html(level_df)}
         </section>
@@ -338,17 +375,19 @@ def printable_report_html(
 
     return f"""
     <!doctype html><html><head><meta charset="utf-8"><style>
-    body {{ font-family: Arial, Tahoma, sans-serif; color: #111827; }}
+    body {{ font-family: "TH Sarabun New", "Sarabun", Tahoma, sans-serif; color: #111827; font-size:16pt; line-height:1.15; }}
     .print-button {{ border:0;border-radius:6px;padding:10px 16px;background:#2563eb;color:white;font-size:15px;cursor:pointer;margin-bottom:16px; }}
-    .page {{ padding:24px 28px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:24px;background:#fff; }}
-    h1 {{ font-size:26px;margin:0 0 4px; }} h2 {{ font-size:18px;margin:24px 0 12px; }} .meta {{ color:#4b5563;margin:0 0 16px; }}
+    .page {{ padding:14px 18px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:18px;background:#fff; }}
+    h1 {{ font-size:24pt;margin:0 0 2px; }} h2 {{ font-size:18pt;margin:14px 0 8px; }} h3 {{ font-size:16pt;margin:8px 0 2px; }} .meta {{ color:#4b5563;margin:0 0 8px; }}
     .bar-row {{ display:grid;grid-template-columns:90px 1fr 48px;gap:10px;align-items:center;margin:10px 0; }}
     .bar-label {{ font-weight:700; }} .bar-track {{ height:22px;background:#e5e7eb;border-radius:999px;overflow:hidden; }} .bar-fill {{ height:100%;background:#2563eb; }} .bar-value {{ text-align:right;font-weight:700; }}
     .room-grid {{ display:grid;grid-template-columns:repeat(4, 1fr);gap:10px;margin-top:10px; }}
     .room-card {{ border:1px solid #d1d5db;border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;background:#f9fafb; }}
     .room-name {{ font-weight:700; }} .room-count {{ font-size:20px;font-weight:800;color:#2563eb; }}
-    table {{ border-collapse:collapse;width:100%;margin-top:8px;font-size:13px; }} th,td {{ border:1px solid #d1d5db;padding:6px 8px;text-align:left;vertical-align:top; }} th {{ background:#f3f4f6; }}
-    @media print {{ .print-button {{ display:none; }} .page {{ border:0;border-radius:0;page-break-after:always;margin:0;padding:12mm; }} .page:last-child {{ page-break-after:auto; }} }}
+    pre {{ font-family:"TH Sarabun New", "Sarabun", Tahoma, sans-serif; font-size:16pt; white-space:pre-wrap; margin:2px 0 8px; }}
+    table {{ border-collapse:collapse;width:100%;margin-top:6px;font-size:16pt; }} th,td {{ border:1px solid #d1d5db;padding:3px 5px;text-align:left;vertical-align:top; }} th {{ background:#f3f4f6; }}
+    @page {{ size:A4; margin:8mm; }}
+    @media print {{ .print-button {{ display:none; }} .page {{ border:0;border-radius:0;page-break-after:always;margin:0;padding:0; }} .page:last-child {{ page-break-after:auto; }} }}
     </style></head><body><button class="print-button" onclick="window.print()">พิมพ์รายงาน</button>{"".join(pages)}</body></html>
     """
 
