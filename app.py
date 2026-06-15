@@ -265,13 +265,8 @@ def grouped_submission_text(status_df: pd.DataFrame, status: str) -> str:
 
 
 def render_submission_text(status_df: pd.DataFrame) -> None:
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("### ห้องที่ส่งแล้ว")
-        st.text(grouped_submission_text(status_df, "ส่งแล้ว"))
-    with col2:
-        st.markdown("### ห้องที่ยังไม่ส่ง")
-        st.text(grouped_submission_text(status_df, "ยังไม่ส่ง"))
+    st.markdown("### ห้องที่ยังไม่ส่ง")
+    st.text(grouped_submission_text(status_df, "ยังไม่ส่ง"))
 
 
 def bar_rows(summary: pd.DataFrame, label_column: str, value_column: str) -> str:
@@ -335,7 +330,6 @@ def printable_report_html(
     rooms_by_level = attendance.classrooms_by_level(students_df)
     date_label = reports.date_range_label(start_date, end_date)
     pages = []
-    sent_text = grouped_submission_text(submit_status, "ส่งแล้ว")
     missing_text = grouped_submission_text(submit_status, "ยังไม่ส่ง")
 
     if selected_level == reports.ALL_OPTION:
@@ -346,9 +340,7 @@ def printable_report_html(
           <p class="meta">ช่วงวันที่: {html.escape(date_label)}</p>
           <h2>จำนวนรายการขาด/ลา/มาสาย ตามระดับชั้น</h2>
           {bar_rows(level_summary, "level", "จำนวนรายการขาด/ลา/มาสาย")}
-          <h2>สถานะการส่งข้อมูล</h2>
-          <h3>ห้องที่ส่งแล้ว</h3><pre>{html.escape(sent_text)}</pre>
-          <h3>ห้องที่ยังไม่ส่ง</h3><pre>{html.escape(missing_text)}</pre>
+          <h2>ห้องที่ยังไม่ส่ง</h2><pre>{html.escape(missing_text)}</pre>
         </section>
         """)
 
@@ -356,7 +348,6 @@ def printable_report_html(
         level_df = filtered[filtered["level"].astype(str) == level]
         room_summary = reports.summary_by_classroom(level_df, rooms_by_level.get(level, []))
         level_submit = submit_status[submit_status["level"].astype(str) == level]
-        level_sent = grouped_submission_text(level_submit, "ส่งแล้ว")
         level_missing = grouped_submission_text(level_submit, "ยังไม่ส่ง")
         pages.append(f"""
         <section class="page">
@@ -364,9 +355,7 @@ def printable_report_html(
           <p class="meta">ช่วงวันที่: {html.escape(date_label)}</p>
           <h2>จำนวนรายการตามห้องเรียน</h2>
           {compact_room_cards(room_summary)}
-          <h2>ห้องที่ส่งแล้ว / ยังไม่ส่ง</h2>
-          <h3>ห้องที่ส่งแล้ว</h3><pre>{html.escape(level_sent)}</pre>
-          <h3>ห้องที่ยังไม่ส่ง</h3><pre>{html.escape(level_missing)}</pre>
+          <h2>ห้องที่ยังไม่ส่ง</h2><pre>{html.escape(level_missing)}</pre>
           <h2>รายการนักเรียน</h2>
           {table_html(level_df)}
         </section>
@@ -415,7 +404,7 @@ def render_reports_dashboard_page(students_df: pd.DataFrame) -> None:
     with chart_col2:
         st.plotly_chart(visualization.bar_by_classroom_status(filtered, chart_rooms), use_container_width=True)
 
-    st.subheader("ห้องที่ส่งแล้ว / ยังไม่ส่ง")
+    st.subheader("ห้องที่ยังไม่ส่ง")
     render_submission_text(submit_status)
     st.subheader("ตารางรายการ")
     st.dataframe(filtered, use_container_width=True, hide_index=True)

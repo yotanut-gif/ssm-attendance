@@ -131,8 +131,7 @@ def submission_status(
     if expected.empty:
         return pd.DataFrame(columns=["date", "level", "classroom", "สถานะส่ง"])
 
-    submitted = filter_submit_log(submit_df, start_date, end_date, level, classroom)
-    submitted_keys = set(zip(submitted["date"].astype(str), submitted["classroom"].astype(str)))
+    submitted_keys = set()
     attendance_submitted = filter_attendance(attendance_df, start_date, end_date, level, classroom)
     if not attendance_submitted.empty:
         attendance_dates = pd.to_datetime(attendance_submitted["date"], errors="coerce").dt.date.astype(str)
