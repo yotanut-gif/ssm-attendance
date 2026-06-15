@@ -265,7 +265,6 @@ def grouped_submission_text(status_df: pd.DataFrame, status: str) -> str:
 
 
 def render_submission_text(status_df: pd.DataFrame) -> None:
-    st.markdown("### ห้องที่ยังไม่ส่ง")
     st.text(grouped_submission_text(status_df, "ยังไม่ส่ง"))
 
 
@@ -383,6 +382,7 @@ def printable_report_html(
 def render_reports_dashboard_page(students_df: pd.DataFrame) -> None:
     st.header("รายงานและแดชบอร์ด")
     attendance_df = sheets.load_attendance_log()
+    submit_df = sheets.load_submit_log()
     start_date, end_date, level, classroom, filtered = render_report_filters(students_df, attendance_df)
 
     levels = attendance.levels_from_students(students_df)
@@ -394,12 +394,11 @@ def render_reports_dashboard_page(students_df: pd.DataFrame) -> None:
     if classroom != reports.ALL_OPTION:
         chart_rooms = [classroom]
 
-    submit_status = reports.submission_status(students_df, attendance_df, start_date, end_date, level, classroom)
+    submit_status = reports.submission_status(students_df, submit_df, attendance_df, start_date, end_date, level, classroom)
 
     chart_col1, chart_col2 = st.columns(2)
     with chart_col1:
         st.plotly_chart(visualization.bar_by_level(filtered, levels), use_container_width=True)
-        st.plotly_chart(visualization.submission_bar(submit_status), use_container_width=True)
     with chart_col2:
         st.plotly_chart(visualization.bar_by_classroom_status(filtered, chart_rooms), use_container_width=True)
 
