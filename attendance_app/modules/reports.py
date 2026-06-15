@@ -110,6 +110,7 @@ def summary_by_classroom_status(df: pd.DataFrame, classrooms: list[str]) -> pd.D
 
 def submission_status(
     students_df: pd.DataFrame,
+    submit_df: pd.DataFrame,
     attendance_df: pd.DataFrame,
     start_date: str,
     end_date: str,
@@ -131,6 +132,13 @@ def submission_status(
         return pd.DataFrame(columns=["date", "level", "classroom", "สถานะส่ง"])
 
     submitted_keys = set()
+
+    submit_submitted = filter_submit_log(submit_df, start_date, end_date, level, classroom)
+    if not submit_submitted.empty:
+        submit_dates = pd.to_datetime(submit_submitted["date"], errors="coerce").dt.date.astype(str)
+        submit_keys = set(zip(submit_dates, submit_submitted["classroom"].astype(str)))
+        submitted_keys |= submit_keys
+
     attendance_submitted = filter_attendance(attendance_df, start_date, end_date, level, classroom)
     if not attendance_submitted.empty:
         attendance_dates = pd.to_datetime(attendance_submitted["date"], errors="coerce").dt.date.astype(str)
