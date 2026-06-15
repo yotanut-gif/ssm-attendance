@@ -112,6 +112,8 @@ def render_attendance_page(students_df: pd.DataFrame, user: dict) -> None:
             student = attendance.find_student(student_id, students_df)
             if not student:
                 st.error("ไม่พบเลขประจำตัวนักเรียนในชีต Students")
+            elif str(student["classroom"]).strip() != str(classroom).strip():
+                st.error(f"นักเรียนเลขประจำตัว {student['student_id']} อยู่ห้อง {student['classroom']} ไม่ตรงกับห้องที่เลือก {classroom}")
             else:
                 try:
                     periods = attendance.parse_periods(periods_raw)
@@ -404,7 +406,7 @@ def render_reports_dashboard_page(students_df: pd.DataFrame) -> None:
     if classroom != reports.ALL_OPTION:
         chart_rooms = [classroom]
 
-    submit_status = reports.submission_status(students_df, submit_df, start_date, end_date, level, classroom)
+    submit_status = reports.submission_status(students_df, submit_df, attendance_df, start_date, end_date, level, classroom)
 
     chart_col1, chart_col2 = st.columns(2)
     with chart_col1:

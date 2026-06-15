@@ -111,6 +111,7 @@ def summary_by_classroom_status(df: pd.DataFrame, classrooms: list[str]) -> pd.D
 def submission_status(
     students_df: pd.DataFrame,
     submit_df: pd.DataFrame,
+    attendance_df: pd.DataFrame,
     start_date: str,
     end_date: str,
     level: str | None = None,
@@ -132,6 +133,11 @@ def submission_status(
 
     submitted = filter_submit_log(submit_df, start_date, end_date, level, classroom)
     submitted_keys = set(zip(submitted["date"].astype(str), submitted["classroom"].astype(str)))
+    attendance_submitted = filter_attendance(attendance_df, start_date, end_date, level, classroom)
+    if not attendance_submitted.empty:
+        attendance_dates = pd.to_datetime(attendance_submitted["date"], errors="coerce").dt.date.astype(str)
+        attendance_keys = set(zip(attendance_dates, attendance_submitted["classroom"].astype(str)))
+        submitted_keys |= attendance_keys
     expected["สถานะส่ง"] = expected.apply(
         lambda row: "ส่งแล้ว" if (row["date"], row["classroom"]) in submitted_keys else "ยังไม่ส่ง",
         axis=1,
