@@ -383,7 +383,6 @@ def printable_report_html(
 def render_reports_dashboard_page(students_df: pd.DataFrame) -> None:
     st.header("รายงานและแดชบอร์ด")
     attendance_df = sheets.load_attendance_log()
-    submit_df = sheets.load_submit_log()
     start_date, end_date, level, classroom, filtered = render_report_filters(students_df, attendance_df)
 
     levels = attendance.levels_from_students(students_df)
@@ -395,7 +394,7 @@ def render_reports_dashboard_page(students_df: pd.DataFrame) -> None:
     if classroom != reports.ALL_OPTION:
         chart_rooms = [classroom]
 
-    submit_status = reports.submission_status(students_df, submit_df, attendance_df, start_date, end_date, level, classroom)
+    submit_status = reports.submission_status(students_df, attendance_df, start_date, end_date, level, classroom)
 
     chart_col1, chart_col2 = st.columns(2)
     with chart_col1:

@@ -110,7 +110,6 @@ def summary_by_classroom_status(df: pd.DataFrame, classrooms: list[str]) -> pd.D
 
 def submission_status(
     students_df: pd.DataFrame,
-    submit_df: pd.DataFrame,
     attendance_df: pd.DataFrame,
     start_date: str,
     end_date: str,
